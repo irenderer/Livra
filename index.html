@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="LIVRA" />
+  <title>LIVRA</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #f0f0f0; font-family: 'Inter', sans-serif; }
+    ::-webkit-scrollbar { display: none; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState } = React;
+
+    const products = [
+      { id: 1, name: "Noir Lounge Chair", price: "£1,200", category: "Seating", img: "🪑", tag: "New" },
+      { id: 2, name: "Minimal Arc Lamp", price: "£340", category: "Lighting", img: "💡", tag: "Bestseller" },
+      { id: 3, name: "Marble Side Table", price: "£890", category: "Tables", img: "🪨", tag: null },
+      { id: 4, name: "Linen Throw Pillow", price: "£85", category: "Textiles", img: "🛋️", tag: "New" },
+      { id: 5, name: "Geometric Mirror", price: "£560", category: "Decor", img: "🪞", tag: null },
+      { id: 6, name: "Walnut Bookshelf", price: "£1,450", category: "Storage", img: "📚", tag: "Limited" },
+    ];
+
+    const categories = ["All", "Seating", "Lighting", "Tables", "Textiles", "Decor", "Storage"];
+
+    const posts = [
+      { id: 1, caption: "Minimal living. Maximum feeling. ✦", platforms: ["instagram", "facebook"], status: "published", time: "2h ago", likes: 312 },
+      { id: 2, caption: "The Noir Chair — where comfort meets design.", platforms: ["instagram"], status: "published", time: "1d ago", likes: 891 },
+      { id: 3, caption: "New arrivals just dropped. Shop Livra.", platforms: ["instagram", "facebook"], status: "scheduled", time: "Tomorrow 9am", likes: null },
+    ];
+
+    function App() {
+      const [screen, setScreen] = useState("home");
+      const [activeCategory, setActiveCategory] = useState("All");
+      const [savedItems, setSavedItems] = useState([]);
+      const [cart, setCart] = useState([]);
+      const [uploadCaption, setUploadCaption] = useState("");
+      const [uploadPlatforms, setUploadPlatforms] = useState({ instagram: true, facebook: true });
+      const [uploadStep, setUploadStep] = useState("compose");
+      const [uploadImage, setUploadImage] = useState(null);
+      const [notification, setNotification] = useState(null);
+
+      const showNotif = (msg) => {
+        setNotification(msg);
+        setTimeout(() => setNotification(null), 2500);
+      };
+
+      const toggleSave = (id) => {
+        setSavedItems(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+      };
+
+      const addToCart = (product) => {
+        setCart(prev => [...prev, product]);
+        showNotif(product.name + " added to bag");
+      };
+
+      const filteredProducts = activeCategory === "All" ? products : products.filter(p => p.category === activeCategory);
+
+      const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const url = URL.createObjectURL(file);
+          setUploadImage(url);
+        }
+      };
+
+      const handlePublish = () => {
+        setUploadStep("published");
+        showNotif("Posted to " + Object.keys(uploadPlatforms).filter(p => uploadPlatforms[p]).join(" & "));
+      };
+
+      const logoStyle = {
+        fontSize: 26, fontWeight: 300,
+        letterSpacing: "0.28em", color: "#111",
+        fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif"
+      };
+
+      return (
+        <div style={{ fontFamily: "'Inter', sans-serif", background: "#fff", minHeight: "100vh", maxWidth: 430, margin: "0 auto", position: "relative", boxShadow: "0 0 40px rgba(0,0,0,0.12)" }}>
+
+          {notification && (
+            <div style={{ position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", background: "#111", color: "#fff", padding: "10px 20px", borderRadius: 30, fontSize: 13, zIndex: 999, whiteSpace: "nowrap" }}>
+              {notification}
+            </div>
+          )}
+
+          {screen === "home" && (
+            <div style={{ paddingBottom: 80 }}>
+              <div style={{ padding: "52px 24px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={logoStyle}>LIVRA</div>
+                  <div style={{ fontSize: 9, letterSpacing: "0.18em", color: "#999", textTransform: "uppercase", marginTop: 3 }}>by Arifa Malik Bristy</div>
+                </div>
+                <div style={{ position: "relative", cursor: "pointer" }} onClick={() => setScreen("cart")}>
+                  <span style={{ fontSize: 22 }}>🛍</span>
+                  {cart.length > 0 && (
+                    <div style={{ position: "absolute", top: -4, right: -4, background: "#111", color: "#fff", borderRadius: "50%", width: 16, height: 16, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>{cart.length}</div>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ margin: "24px 24px 0", background: "#111", borderRadius: 20, padding: "32px 28px", position: "relative", overflow: "hidden" }}>
+                <div style={{ position: "absolute", right: 20, top: "50%", transform: "translateY(-50%)", fontSize: 80, opacity: 0.15 }}>✦</div>
+                <div style={{ fontSize: 11, letterSpacing: "0.2em", color: "#888", textTransform: "uppercase", marginBottom: 8 }}>New Collection</div>
+                <div style={{ fontSize: 26, fontWeight: 300, color: "#fff", letterSpacing: "0.05em", lineHeight: 1.2, marginBottom: 16 }}>Your space.<br />Your story.</div>
+                <button onClick={() => setScreen("shop")} style={{ background: "#fff", color: "#111", border: "none", padding: "10px 22px", borderRadius: 30, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Shop Now</button>
+              </div>
+
+              <div style={{ display: "flex", gap: 12, padding: "20px 24px 0" }}>
+                {[["312", "Products"], ["4.9★", "Rating"], ["2.1k", "Sold"]].map(([val, label]) => (
+                  <div key={label} style={{ flex: 1, background: "#f5f5f5", borderRadius: 14, padding: "14px 12px", textAlign: "center" }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: "#111" }}>{val}</div>
+                    <div style={{ fontSize: 11, color: "#999", marginTop: 2 }}>{label}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ padding: "28px 24px 0" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: "#111" }}>Featured</div>
+                  <div style={{ fontSize: 12, color: "#999", cursor: "pointer" }} onClick={() => setScreen("shop")}>See all →</div>
+                </div>
+                <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 8 }}>
+                  {products.slice(0, 4).map(p => (
+                    <div key={p.id} style={{ minWidth: 160, background: "#f5f5f5", borderRadius: 16, padding: "16px 14px", flexShrink: 0, position: "relative" }}>
+                      {p.tag && <div style={{ position: "absolute", top: 10, left: 10, background: "#111", color: "#fff", fontSize: 9, padding: "3px 8px", borderRadius: 20 }}>{p.tag}</div>}
+                      <div style={{ fontSize: 40, textAlign: "center", margin: "12px 0" }}>{p.img}</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#111" }}>{p.name}</div>
+                      <div style={{ fontSize: 11, color: "#999", marginTop: 2 }}>{p.price}</div>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, alignItems: "center" }}>
+                        <button onClick={() => addToCart(p)} style={{ background: "#111", color: "#fff", border: "none", padding: "6px 12px", borderRadius: 20, fontSize: 11, cursor: "pointer" }}>Add</button>
+                        <span onClick={() => toggleSave(p.id)} style={{ cursor: "pointer", fontSize: 16 }}>{savedItems.includes(p.id) ? "🖤" : "🤍"}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ margin: "24px 24px 0", border: "1.5px solid #111", borderRadius: 16, padding: "18px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }} onClick={() => setScreen("social")}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#111" }}>Post to all platforms</div>
+                  <div style={{ fontSize: 11, color: "#999", marginTop: 2 }}>Instagram + Facebook in one tap</div>
+                </div>
+                <div style={{ fontSize: 24 }}>✦</div>
+              </div>
+            </div>
+          )}
+
+          {screen === "shop" && (
+            <div style={{ paddingBottom: 80 }}>
+              <div style={{ padding: "52px 24px 20px", display: "flex", alignItems: "center", gap: 12 }}>
+                <span onClick={() => setScreen("home")} style={{ cursor: "pointer", fontSize: 20 }}>←</span>
+                <div style={logoStyle}>SHOP</div>
+              </div>
+              <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "0 24px 20px" }}>
+                {categories.map(cat => (
+                  <button key={cat} onClick={() => setActiveCategory(cat)} style={{ background: activeCategory === cat ? "#111" : "#f5f5f5", color: activeCategory === cat ? "#fff" : "#111", border: "none", padding: "8px 16px", borderRadius: 30, fontSize: 12, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }}>{cat}</button>
+                ))}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, padding: "0 24px" }}>
+                {filteredProducts.map(p => (
+                  <div key={p.id} style={{ background: "#f5f5f5", borderRadius: 16, padding: "16px 14px", position: "relative" }}>
+                    {p.tag && <div style={{ position: "absolute", top: 10, left: 10, background: "#111", color: "#fff", fontSize: 9, padding: "3px 8px", borderRadius: 20 }}>{p.tag}</div>}
+                    <span onClick={() => toggleSave(p.id)} style={{ position: "absolute", top: 10, right: 10, cursor: "pointer", fontSize: 16 }}>{savedItems.includes(p.id) ? "🖤" : "🤍"}</span>
+                    <div style={{ fontSize: 42, textAlign: "center", margin: "14px 0" }}>{p.img}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "#111", lineHeight: 1.3 }}>{p.name}</div>
+                    <div style={{ fontSize: 11, color: "#999", margin: "4px 0 10px" }}>{p.price}</div>
+                    <button onClick={() => addToCart(p)} style={{ width: "100%", background: "#111", color: "#fff", border: "none", padding: "8px", borderRadius: 20, fontSize: 12, cursor: "pointer" }}>Add to Bag</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {screen === "social" && (
+            <div style={{ paddingBottom: 80 }}>
+              <div style={{ padding: "52px 24px 24px", display: "flex", alignItems: "center", gap: 12 }}>
+                <span onClick={() => { setScreen("home"); setUploadStep("compose"); setUploadImage(null); setUploadCaption(""); }} style={{ cursor: "pointer", fontSize: 20 }}>←</span>
+                <div>
+                  <div style={logoStyle}>LIVRA SOCIAL</div>
+                  <div style={{ fontSize: 11, color: "#999" }}>Post once. Publish everywhere.</div>
+                </div>
+              </div>
+
+              <div style={{ padding: "0 24px 24px" }}>
+                <div style={{ fontSize: 11, letterSpacing: "0.15em", color: "#999", textTransform: "uppercase", marginBottom: 12 }}>Connected</div>
+                {[{ name: "Instagram", handle: "@livra.official", icon: "📷" }, { name: "Facebook", handle: "Livra by Arifa", icon: "📘" }].map(acc => (
+                  <div key={acc.name} style={{ display: "flex", alignItems: "center", gap: 14, background: "#f5f5f5", borderRadius: 14, padding: "14px 16px", marginBottom: 10 }}>
+                    <div style={{ fontSize: 24 }}>{acc.icon}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#111" }}>{acc.name}</div>
+                      <div style={{ fontSize: 11, color: "#999" }}>{acc.handle}</div>
+                    </div>
+                    <div style={{ fontSize: 11, color: "#22c55e", fontWeight: 600 }}>● Live</div>
+                  </div>
+                ))}
+              </div>
+
+              {uploadStep === "compose" && (
+                <div style={{ padding: "0 24px" }}>
+                  <label style={{ display: "block", background: uploadImage ? "transparent" : "#f5f5f5", borderRadius: 16, overflow: "hidden", border: uploadImage ? "none" : "2px dashed #ddd", cursor: "pointer", marginBottom: 14 }}>
+                    {uploadImage ? <img src={uploadImage} alt="upload" style={{ width: "100%", borderRadius: 16, display: "block" }} /> : (
+                      <div style={{ padding: "40px 0", textAlign: "center" }}>
+                        <div style={{ fontSize: 32, marginBottom: 8 }}>+</div>
+                        <div style={{ fontSize: 13, color: "#999" }}>Tap to upload photo</div>
+                      </div>
+                    )}
+                    <input type="file" accept="image/*" onChange={handleFileUpload} style={{ display: "none" }} />
+                  </label>
+
+                  <textarea value={uploadCaption} onChange={e => setUploadCaption(e.target.value)} placeholder="Write your caption..." style={{ width: "100%", background: "#f5f5f5", border: "none", borderRadius: 14, padding: "14px 16px", fontSize: 13, color: "#111", resize: "none", height: 90, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
+
+                  <div style={{ marginTop: 14, marginBottom: 20 }}>
+                    <div style={{ fontSize: 11, letterSpacing: "0.15em", color: "#999", textTransform: "uppercase", marginBottom: 10 }}>Post to</div>
+                    {[{ key: "instagram", label: "Instagram", icon: "📷" }, { key: "facebook", label: "Facebook", icon: "📘" }].map(p => (
+                      <div key={p.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: "#f5f5f5", borderRadius: 14, marginBottom: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{ fontSize: 20 }}>{p.icon}</span>
+                          <span style={{ fontSize: 13, fontWeight: 500, color: "#111" }}>{p.label}</span>
+                        </div>
+                        <div onClick={() => setUploadPlatforms(prev => ({ ...prev, [p.key]: !prev[p.key] }))} style={{ width: 44, height: 24, borderRadius: 12, background: uploadPlatforms[p.key] ? "#111" : "#ddd", position: "relative", cursor: "pointer" }}>
+                          <div style={{ position: "absolute", top: 3, left: uploadPlatforms[p.key] ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.2s" }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button onClick={handlePublish} style={{ width: "100%", background: "#111", color: "#fff", border: "none", padding: "16px", borderRadius: 30, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Publish Now ✦</button>
+
+                  <div style={{ marginTop: 32 }}>
+                    <div style={{ fontSize: 11, letterSpacing: "0.15em", color: "#999", textTransform: "uppercase", marginBottom: 12 }}>Recent Posts</div>
+                    {posts.map(post => (
+                      <div key={post.id} style={{ background: "#f5f5f5", borderRadius: 14, padding: "14px 16px", marginBottom: 10 }}>
+                        <div style={{ fontSize: 13, color: "#111", marginBottom: 8 }}>{post.caption}</div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div style={{ display: "flex", gap: 6 }}>{post.platforms.map(p => <span key={p} style={{ fontSize: 14 }}>{p === "instagram" ? "📷" : "📘"}</span>)}</div>
+                          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                            {post.likes && <div style={{ fontSize: 11, color: "#999" }}>🖤 {post.likes}</div>}
+                            <div style={{ fontSize: 10, padding: "3px 10px", borderRadius: 20, background: post.status === "published" ? "#111" : "#e5e5e5", color: post.status === "published" ? "#fff" : "#999" }}>{post.status}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {uploadStep === "published" && (
+                <div style={{ padding: "0 24px", textAlign: "center" }}>
+                  <div style={{ fontSize: 60, marginBottom: 16 }}>✦</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "#111", marginBottom: 8 }}>Published.</div>
+                  <div style={{ fontSize: 13, color: "#999", marginBottom: 32 }}>Your post is live on {Object.keys(uploadPlatforms).filter(p => uploadPlatforms[p]).join(" & ")}</div>
+                  <button onClick={() => { setUploadStep("compose"); setUploadImage(null); setUploadCaption(""); }} style={{ background: "#111", color: "#fff", border: "none", padding: "14px 32px", borderRadius: 30, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Post Again</button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {screen === "cart" && (
+            <div style={{ paddingBottom: 80 }}>
+              <div style={{ padding: "52px 24px 24px", display: "flex", alignItems: "center", gap: 12 }}>
+                <span onClick={() => setScreen("home")} style={{ cursor: "pointer", fontSize: 20 }}>←</span>
+                <div style={logoStyle}>YOUR BAG</div>
+              </div>
+              {cart.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "60px 24px", color: "#999" }}>
+                  <div style={{ fontSize: 48, marginBottom: 12 }}>🛍</div>
+                  <div style={{ fontSize: 14 }}>Your bag is empty</div>
+                  <button onClick={() => setScreen("shop")} style={{ marginTop: 20, background: "#111", color: "#fff", border: "none", padding: "12px 28px", borderRadius: 30, fontSize: 13, cursor: "pointer" }}>Start Shopping</button>
+                </div>
+              ) : (
+                <div style={{ padding: "0 24px" }}>
+                  {cart.map((item, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, background: "#f5f5f5", borderRadius: 14, padding: "14px", marginBottom: 10 }}>
+                      <div style={{ fontSize: 32 }}>{item.img}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#111" }}>{item.name}</div>
+                        <div style={{ fontSize: 12, color: "#999" }}>{item.price}</div>
+                      </div>
+                      <button onClick={() => setCart(prev => prev.filter((_, idx) => idx !== i))} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#999" }}>×</button>
+                    </div>
+                  ))}
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "20px 0", borderTop: "1px solid #eee", marginTop: 10 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "#111" }}>Total</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#111" }}>£{cart.reduce((sum, item) => sum + parseInt(item.price.replace("£", "").replace(",", "")), 0).toLocaleString()}</div>
+                  </div>
+                  <button style={{ width: "100%", background: "#111", color: "#fff", border: "none", padding: "16px", borderRadius: 30, fontSize: 14, fontWeight: 600, cursor: "pointer" }} onClick={() => { showNotif("Order placed! ✦"); setCart([]); setScreen("home"); }}>Checkout</button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {screen === "saved" && (
+            <div style={{ paddingBottom: 80 }}>
+              <div style={{ padding: "52px 24px 24px", display: "flex", alignItems: "center", gap: 12 }}>
+                <span onClick={() => setScreen("home")} style={{ cursor: "pointer", fontSize: 20 }}>←</span>
+                <div style={logoStyle}>SAVED</div>
+              </div>
+              {savedItems.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "60px 24px", color: "#999" }}>
+                  <div style={{ fontSize: 48, marginBottom: 12 }}>🤍</div>
+                  <div style={{ fontSize: 14 }}>Nothing saved yet</div>
+                </div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, padding: "0 24px" }}>
+                  {products.filter(p => savedItems.includes(p.id)).map(p => (
+                    <div key={p.id} style={{ background: "#f5f5f5", borderRadius: 16, padding: "16px 14px", position: "relative" }}>
+                      <span onClick={() => toggleSave(p.id)} style={{ position: "absolute", top: 10, right: 10, cursor: "pointer", fontSize: 16 }}>🖤</span>
+                      <div style={{ fontSize: 42, textAlign: "center", margin: "14px 0" }}>{p.img}</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#111" }}>{p.name}</div>
+                      <div style={{ fontSize: 11, color: "#999", margin: "4px 0 10px" }}>{p.price}</div>
+                      <button onClick={() => addToCart(p)} style={{ width: "100%", background: "#111", color: "#fff", border: "none", padding: "8px", borderRadius: 20, fontSize: 12, cursor: "pointer" }}>Add to Bag</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: "#fff", borderTop: "1px solid #f0f0f0", display: "flex", justifyContent: "space-around", padding: "12px 0 20px" }}>
+            {[{ id: "home", icon: "⌂", label: "Home" }, { id: "shop", icon: "◻", label: "Shop" }, { id: "social", icon: "✦", label: "Post" }, { id: "saved", icon: "♡", label: "Saved" }, { id: "cart", icon: "◈", label: "Bag" }].map(tab => (
+              <div key={tab.id} onClick={() => setScreen(tab.id)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, cursor: "pointer" }}>
+                <div style={{ fontSize: 20, color: screen === tab.id ? "#111" : "#ccc" }}>{tab.icon}</div>
+                <div style={{ fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: screen === tab.id ? "#111" : "#ccc" }}>{tab.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
