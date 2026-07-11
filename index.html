@@ -137,7 +137,7 @@ const { useState, useEffect, useCallback } = React;
 const SUPABASE_URL = "https://empjwjjonbjbwiwcxlao.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtcGp3ampvbmJqYndpd2N4bGFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3MzAxODgsImV4cCI6MjA5OTMwNjE4OH0.nMrAU1a8teyBJDvPfr46dn7oVktx9QVtjT22CIAzzws";
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Personal number — customers use "Send Money" and add the cash-out charge
 const PAYMENT_NUMBERS = {
@@ -171,7 +171,7 @@ function Storefront(){
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await sb
       .from("products")
       .select("*")
       .eq("active", true)
@@ -328,7 +328,7 @@ function Checkout({ cart, total, onClose, onSuccess }){
       return;
     }
     setSubmitting(true);
-    const { error: insertError } = await supabase.from("orders").insert({
+    const { error: insertError } = await sb.from("orders").insert({
       customer_name: name,
       phone,
       address,
@@ -413,7 +413,7 @@ function AdminLogin({ onLoggedIn }){
   async function login(){
     setLoading(true);
     setError("");
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await sb.auth.signInWithPassword({ email, password });
     setLoading(false);
     if(error){ setError(error.message); return; }
     onLoggedIn();
@@ -441,7 +441,7 @@ function AdminDashboard(){
     <div className="admin-wrap">
       <div style={{display:"flex", justifyContent:"space-between", alignItems:"center"}}>
         <h1 style={{fontSize:32}}>LIVRA Admin</h1>
-        <button className="btn outline" style={{width:"auto"}} onClick={() => supabase.auth.signOut().then(() => window.location.reload())}>
+        <button className="btn outline" style={{width:"auto"}} onClick={() => sb.auth.signOut().then(() => window.location.reload())}>
           Sign out
         </button>
       </div>
@@ -466,7 +466,7 @@ function ProductsAdmin(){
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase.from("products").select("*").order("created_at", { ascending: false });
+    const { data, error } = await sb.from("products").select("*").order("created_at", { ascending: false });
     if(!error) setProducts(data || []);
     setLoading(false);
   }, []);
@@ -477,10 +477,10 @@ function ProductsAdmin(){
     setUploading(true);
     const ext = file.name.split(".").pop();
     const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await supabase.storage.from("product-images").upload(path, file);
+    const { error } = await sb.storage.from("product-images").upload(path, file);
     setUploading(false);
     if(error){ alert("Image upload failed: " + error.message); return null; }
-    const { data } = supabase.storage.from("product-images").getPublicUrl(path);
+    const { data } = sb.storage.from("product-images").getPublicUrl(path);
     return data.publicUrl;
   }
 
@@ -494,9 +494,9 @@ function ProductsAdmin(){
       active: p.active,
     };
     if(p.id){
-      await supabase.from("products").update(payload).eq("id", p.id);
+      await sb.from("products").update(payload).eq("id", p.id);
     } else {
-      await supabase.from("products").insert(payload);
+      await sb.from("products").insert(payload);
     }
     setEditing(null);
     load();
@@ -504,12 +504,12 @@ function ProductsAdmin(){
 
   async function deleteProduct(id){
     if(!confirm("Delete this product? This can't be undone.")) return;
-    await supabase.from("products").delete().eq("id", id);
+    await sb.from("products").delete().eq("id", id);
     load();
   }
 
   async function toggleActive(p){
-    await supabase.from("products").update({ active: !p.active }).eq("id", p.id);
+    await sb.from("products").update({ active: !p.active }).eq("id", p.id);
     load();
   }
 
@@ -602,7 +602,7 @@ function OrdersAdmin(){
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+    const { data, error } = await sb.from("orders").select("*").order("created_at", { ascending: false });
     if(!error) setOrders(data || []);
     setLoading(false);
   }, []);
@@ -610,7 +610,7 @@ function OrdersAdmin(){
   useEffect(() => { load(); }, [load]);
 
   async function updateStatus(id, status){
-    await supabase.from("orders").update({ status }).eq("id", id);
+    await sb.from("orders").update({ status }).eq("id", id);
     load();
   }
 
@@ -678,8 +678,8 @@ function AdminGate(){
   const [session, setSession] = useState(undefined); // undefined = loading
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, sess) => setSession(sess));
+    sb.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: listener } = sb.auth.onAuthStateChange((_event, sess) => setSession(sess));
     return () => listener.subscription.unsubscribe();
   }, []);
 
