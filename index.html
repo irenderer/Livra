@@ -4,6 +4,13 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>LIVRA</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#F7F3EC">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="LIVRA">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Work+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -262,6 +269,7 @@ function Storefront(){
       .from("products")
       .select("*")
       .eq("active", true)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false });
     if(!error) setProducts(data || []);
     setLoading(false);
@@ -694,6 +702,7 @@ function ProductsAdmin(){
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -703,6 +712,10 @@ function ProductsAdmin(){
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const live = products.filter(p => !p.deleted_at);
+  const trash = products.filter(p => p.deleted_at);
+  const shown = showTrash ? trash : live;
 
   async function uploadPhotos(files){
     setUploading(true);
@@ -746,8 +759,18 @@ function ProductsAdmin(){
     load();
   }
 
-  async function deleteProduct(id){
-    if(!confirm("Delete this product? This can't be undone.")) return;
+  async function moveToTrash(id){
+    await sb.from("products").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+    load();
+  }
+
+  async function restoreFromTrash(id){
+    await sb.from("products").update({ deleted_at: null }).eq("id", id);
+    load();
+  }
+
+  async function deleteForever(id){
+    if(!confirm("Delete this product FOREVER? This cannot be undone.")) return;
     await sb.from("products").delete().eq("id", id);
     load();
   }
@@ -759,9 +782,16 @@ function ProductsAdmin(){
 
   return (
     <div>
-      <button className="btn" style={{width:"auto", marginBottom:20}} onClick={() => setEditing(emptyProduct())}>
-        + Add product
-      </button>
+      <div style={{display:"flex", gap:10, marginBottom:20, flexWrap:"wrap"}}>
+        {!showTrash && (
+          <button className="btn" style={{width:"auto"}} onClick={() => setEditing(emptyProduct())}>
+            + Add product
+          </button>
+        )}
+        <button className="btn outline" style={{width:"auto"}} onClick={() => { setShowTrash(!showTrash); setEditing(null); }}>
+          {showTrash ? "\u2190 Back to products" : "Recycle bin (" + trash.length + ")"}
+        </button>
+      </div>
 
       {editing && (
         <ProductForm
@@ -775,21 +805,30 @@ function ProductsAdmin(){
 
       {loading ? (
         <p>Loading\u2026</p>
-      ) : products.length === 0 ? (
-        <div className="empty">No products yet. Add your first one above.</div>
+      ) : shown.length === 0 ? (
+        <div className="empty">{showTrash ? "Recycle bin is empty." : "No products yet. Add your first one above."}</div>
       ) : (
-        products.map(p => (
+        shown.map(p => (
           <div className="admin-row" key={p.id}>
-            <img src={firstImage(p)} alt={p.name} />
+            <img src={firstImage(p)} alt={p.name} style={showTrash ? {opacity:0.5} : null} />
             <div className="grow">
               <strong>{p.name}</strong>
               <div style={{fontSize:13, color:"#8a8474"}}>
-                {(p.room && p.room !== "Any Room" ? p.room + " \u00B7 " : "") + (p.category || "Other")} \u00B7 {money(p.price)} \u00B7 {p.stock} in stock \u00B7 {allImages(p).length} photo{allImages(p).length > 1 ? "s" : ""} {!p.active && "\u00B7 hidden"}
+                {(p.room && p.room !== "Any Room" ? p.room + " \u00B7 " : "") + (p.category || "Other")} \u00B7 {money(p.price)} \u00B7 {p.stock} in stock \u00B7 {allImages(p).length} photo{allImages(p).length > 1 ? "s" : ""} {!p.active && !showTrash && "\u00B7 hidden"}
               </div>
             </div>
-            <button className="btn outline" style={{width:"auto"}} onClick={() => setEditing(toFormProduct(p))}>Edit</button>
-            <button className="btn outline" style={{width:"auto"}} onClick={() => toggleActive(p)}>{p.active ? "Hide" : "Unhide"}</button>
-            <button className="btn danger" style={{width:"auto"}} onClick={() => deleteProduct(p.id)}>Delete</button>
+            {showTrash ? (
+              <React.Fragment>
+                <button className="btn outline" style={{width:"auto"}} onClick={() => restoreFromTrash(p.id)}>Restore</button>
+                <button className="btn danger" style={{width:"auto"}} onClick={() => deleteForever(p.id)}>Delete forever</button>
+              </React.Fragment>
+            ) : (
+              <React.Fragment>
+                <button className="btn outline" style={{width:"auto"}} onClick={() => setEditing(toFormProduct(p))}>Edit</button>
+                <button className="btn outline" style={{width:"auto"}} onClick={() => toggleActive(p)}>{p.active ? "Hide" : "Unhide"}</button>
+                <button className="btn danger" style={{width:"auto"}} onClick={() => moveToTrash(p.id)}>Trash</button>
+              </React.Fragment>
+            )}
           </div>
         ))
       )}
@@ -1063,6 +1102,13 @@ function App(){
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("/sw.js").catch(function () {});
+  });
+}
 </script>
 </body>
 </html>
