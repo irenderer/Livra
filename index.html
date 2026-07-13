@@ -345,7 +345,9 @@ function Storefront(){
       <Toast message={toast} />
       <nav className="nav">
         <div className="nav-inner">
-          <div className="logo">LIVRA</div>
+          <a href="#" onClick={(e) => e.preventDefault()} style={{display:"flex", alignItems:"center"}}>
+            <img src="/logo.png" alt="LIVRA" style={{height:"36px", width:"auto", display:"block"}} />
+          </a>
           <button className="cart-btn" onClick={() => setCartOpen(true)} aria-label="Shopping bag">
             <svg width="22" height="24" viewBox="0 0 22 24" fill="none">
               <path d="M3 7.5 H19 L17.6 21 H4.4 Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
@@ -358,7 +360,7 @@ function Storefront(){
 
       <div className="hero">
         <h1>Live in your own aura</h1>
-        <p>Considered pieces, shipped with care.</p>
+        <p>Furniture for living \u2014 considered pieces, shipped with care.</p>
       </div>
 
       <div className="toolbar">
