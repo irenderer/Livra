@@ -170,8 +170,9 @@
   .photo-slot{ position:relative; }
   .photo-slot img{ width:76px; height:76px; object-fit:cover; border:1px solid var(--line); display:block; }
   .photo-slot .rm{
-    position:absolute; top:-8px; right:-8px; width:22px; height:22px; border-radius:50%;
-    background:var(--danger); color:white; border:none; font-size:13px; line-height:1;
+    position:absolute; top:-9px; right:-9px; width:26px; height:26px; border-radius:50%;
+    background:var(--danger); color:white; border:none; font-size:15px; line-height:1;
+    display:flex; align-items:center; justify-content:center;
   }
   .empty{ text-align:center; padding:60px 20px; color:#a39c8a; }
   .invoice-wrap{ position:fixed; inset:0; background:rgba(32,32,28,0.5); z-index:60; overflow-y:auto; padding:24px 12px; }
@@ -222,7 +223,7 @@ const MAX_PHOTOS = 4;
 const PLACEHOLDER = "https://placehold.co/600x600?text=LIVRA";
 
 function money(n){
-  return "\u09F3" + Number(n).toLocaleString("en-BD", { maximumFractionDigits: 0 });
+  return "৳" + Number(n).toLocaleString("en-BD", { maximumFractionDigits: 0 });
 }
 function firstImage(p){
   if(p.images && p.images.length > 0) return p.images[0];
@@ -360,7 +361,7 @@ function Storefront(){
 
       <div className="hero">
         <h1>Live in your own aura</h1>
-        <p>Furniture for living \u2014 considered pieces, shipped with care.</p>
+        <p>Furniture for living — considered pieces, shipped with care.</p>
       </div>
 
       <div className="toolbar">
@@ -368,7 +369,7 @@ function Storefront(){
           className="search"
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="Search pieces\u2026 e.g. table, rattan, lamp"
+          placeholder="Search pieces… e.g. table, rattan, lamp"
         />
         <select className="sort" value={sort} onChange={e => setSort(e.target.value)}>
           <option value="newest">Newest first</option>
@@ -399,10 +400,10 @@ function Storefront(){
       )}
 
       {loading ? (
-        <div className="empty">Loading pieces\u2026</div>
+        <div className="empty">Loading pieces…</div>
       ) : visible.length === 0 ? (
         <div className="empty">
-          {products.length === 0 ? "Nothing here yet \u2014 check back soon." : "No pieces match \u2014 try clearing the search or filters."}
+          {products.length === 0 ? "Nothing here yet — check back soon." : "No pieces match — try clearing the search or filters."}
         </div>
       ) : (
         <div className="grid">
@@ -410,7 +411,7 @@ function Storefront(){
             <div className="card" key={p.id} onClick={() => setDetail(p)}>
               <img className="card-img" src={firstImage(p)} alt={p.name} />
               <div className="card-body">
-                <p className="card-cat">{(p.room && p.room !== "Any Room" ? p.room + " \u00B7 " : "") + (p.category || "Other")}</p>
+                <p className="card-cat">{(p.room && p.room !== "Any Room" ? p.room + " · " : "") + (p.category || "Other")}</p>
                 <h3 className="card-name">{p.name}</h3>
                 <p className="card-price">{money(p.price)}</p>
                 <p className="card-stock">{p.stock > 0 ? p.stock + " in stock" : "Out of stock"}</p>
@@ -439,7 +440,7 @@ function Storefront(){
         <React.Fragment>
           <div className="overlay" onClick={() => setCartOpen(false)} />
           <div className="drawer">
-            <button className="close-x" onClick={() => setCartOpen(false)}>\u00D7</button>
+            <button className="close-x" onClick={() => setCartOpen(false)}>×</button>
             <h2>Your bag</h2>
             {cart.length === 0 ? (
               <p style={{color:"#8a8474"}}>Your bag is empty.</p>
@@ -451,7 +452,7 @@ function Storefront(){
                     <div className="cart-line-info">
                       <p className="nm">{l.name}</p>
                       <div className="qty-row">
-                        <button onClick={() => updateQty(l.product_id, -1)}>\u2212</button>
+                        <button onClick={() => updateQty(l.product_id, -1)}>−</button>
                         <span>{l.qty}</span>
                         <button onClick={() => updateQty(l.product_id, 1)} disabled={l.qty >= l.stock}>+</button>
                       </div>
@@ -476,12 +477,12 @@ function Storefront(){
           cart={cart}
           total={cartTotal}
           onClose={() => setCheckoutOpen(false)}
-          onSuccess={() => { setCart([]); setCheckoutOpen(false); showToast("Order placed \u2014 thank you!"); }}
+          onSuccess={() => { setCart([]); setCheckoutOpen(false); showToast("Order placed — thank you!"); }}
         />
       )}
 
       <div className="footer">
-        <div>\u00A9 {new Date().getFullYear()} LIVRA</div>
+        <div>© {new Date().getFullYear()} LIVRA</div>
         <a className="admin-link" href="#/admin">admin</a>
       </div>
     </div>
@@ -497,7 +498,7 @@ function ProductDetail({ product, onClose, onAdd }){
     <React.Fragment>
       <div className="overlay" onClick={onClose} />
       <div className="drawer">
-        <button className="close-x" onClick={onClose}>\u00D7</button>
+        <button className="close-x" onClick={onClose}>×</button>
         <div style={{clear:"both"}} />
 
         <img className="gallery-main" src={imgs[idx]} alt={product.name} />
@@ -509,7 +510,7 @@ function ProductDetail({ product, onClose, onAdd }){
           </div>
         )}
 
-        <p className="detail-cat">{(product.room && product.room !== "Any Room" ? product.room + " \u00B7 " : "") + (product.category || "Other")}</p>
+        <p className="detail-cat">{(product.room && product.room !== "Any Room" ? product.room + " · " : "") + (product.category || "Other")}</p>
         <h2 className="detail-name">{product.name}</h2>
         <p className="detail-price">{money(product.price)}</p>
 
@@ -585,7 +586,7 @@ function Checkout({ cart, total, onClose, onSuccess }){
     <React.Fragment>
       <div className="overlay" onClick={onClose} />
       <div className="drawer">
-        <button className="close-x" onClick={onClose}>\u00D7</button>
+        <button className="close-x" onClick={onClose}>×</button>
         <h2>Checkout</h2>
 
         <label>Full name</label>
@@ -601,7 +602,7 @@ function Checkout({ cart, total, onClose, onSuccess }){
         <div className="pay-option selected">
           <strong>bKash</strong>
           <p style={{margin:"6px 0 0", fontSize:13, color:"#6b6558"}}>
-            Send Money <strong>{money(amountToSend)}</strong> to <strong>{BKASH_NUMBER}</strong> (personal number \u2014 cash-out charge included), then enter the transaction ID below.
+            Send Money <strong>{money(amountToSend)}</strong> to <strong>{BKASH_NUMBER}</strong> (personal number — cash-out charge included), then enter the transaction ID below.
           </p>
         </div>
 
@@ -623,7 +624,7 @@ function Checkout({ cart, total, onClose, onSuccess }){
         </div>
 
         <button className="btn" disabled={submitting} onClick={submitOrder}>
-          {submitting ? "Placing order\u2026" : "Place order"}
+          {submitting ? "Placing order…" : "Place order"}
         </button>
         <p style={{fontSize:12, color:"#a39c8a", marginTop:10}}>
           Your order will be marked as pending until we verify your payment. We'll reach out on the phone number you provided.
@@ -657,7 +658,7 @@ function AdminLogin(){
       <label>Password</label>
       <input value={password} onChange={e => setPassword(e.target.value)} type="password" onKeyDown={e => e.key === "Enter" && login()} />
       {error && <p style={{color:"#A8422F", fontSize:13}}>{error}</p>}
-      <button className="btn" disabled={loading} onClick={login}>{loading ? "Signing in\u2026" : "Sign in"}</button>
+      <button className="btn" disabled={loading} onClick={login}>{loading ? "Signing in…" : "Sign in"}</button>
     </div>
   );
 }
@@ -791,12 +792,13 @@ function ProductsAdmin(){
           </button>
         )}
         <button className="btn outline" style={{width:"auto"}} onClick={() => { setShowTrash(!showTrash); setEditing(null); }}>
-          {showTrash ? "\u2190 Back to products" : "Recycle bin (" + trash.length + ")"}
+          {showTrash ? "← Back to products" : "Recycle bin (" + trash.length + ")"}
         </button>
       </div>
 
       {editing && (
         <ProductForm
+          key={editing.id || "new"}
           product={editing}
           uploading={uploading}
           onUpload={uploadPhotos}
@@ -806,7 +808,7 @@ function ProductsAdmin(){
       )}
 
       {loading ? (
-        <p>Loading\u2026</p>
+        <p>Loading…</p>
       ) : shown.length === 0 ? (
         <div className="empty">{showTrash ? "Recycle bin is empty." : "No products yet. Add your first one above."}</div>
       ) : (
@@ -816,7 +818,7 @@ function ProductsAdmin(){
             <div className="grow">
               <strong>{p.name}</strong>
               <div style={{fontSize:13, color:"#8a8474"}}>
-                {(p.room && p.room !== "Any Room" ? p.room + " \u00B7 " : "") + (p.category || "Other")} \u00B7 {money(p.price)} \u00B7 {p.stock} in stock \u00B7 {allImages(p).length} photo{allImages(p).length > 1 ? "s" : ""} {!p.active && !showTrash && "\u00B7 hidden"}
+                {(p.room && p.room !== "Any Room" ? p.room + " · " : "") + (p.category || "Other")} · {money(p.price)} · {p.stock} in stock · {allImages(p).length} photo{allImages(p).length > 1 ? "s" : ""} {!p.active && !showTrash && "· hidden"}
               </div>
             </div>
             {showTrash ? (
@@ -889,7 +891,7 @@ function ProductForm({ product, uploading, onUpload, onCancel, onSave }){
 
       <div className="form-grid">
         <div>
-          <label>Price (\u09F3)</label>
+          <label>Price (৳)</label>
           <input type="number" value={p.price} onChange={e => setP({...p, price: e.target.value})} />
         </div>
         <div>
@@ -904,16 +906,20 @@ function ProductForm({ product, uploading, onUpload, onCancel, onSave }){
           {p.images.map((u, i) => (
             <div className="photo-slot" key={i}>
               <img src={u} alt="" />
-              <button className="rm" onClick={() => removePhoto(i)}>\u00D7</button>
+              <button className="rm" onClick={() => removePhoto(i)}>×</button>
             </div>
           ))}
         </div>
       )}
-      {p.images.length < MAX_PHOTOS && (
-        <input type="file" accept="image/*" multiple onChange={handleFiles} />
+      {p.images.length < MAX_PHOTOS ? (
+        <React.Fragment>
+          <input type="file" accept="image/*" multiple onChange={handleFiles} />
+          <p className="hint">First photo is the cover. You can select several at once.</p>
+        </React.Fragment>
+      ) : (
+        <p className="hint">Maximum {MAX_PHOTOS} photos reached — tap the red × on a photo to remove it, then you can add a new one.</p>
       )}
-      <p className="hint">First photo is the cover. You can select several at once.</p>
-      {uploading && <p style={{fontSize:13}}>Uploading\u2026</p>}
+      {uploading && <p style={{fontSize:13}}>Uploading…</p>}
 
       <label>Specifications</label>
       <textarea
@@ -966,7 +972,7 @@ function OrdersAdmin(){
       </div>
 
       {loading ? (
-        <p>Loading\u2026</p>
+        <p>Loading…</p>
       ) : filtered.length === 0 ? (
         <div className="empty">No orders here yet.</div>
       ) : (
@@ -977,21 +983,21 @@ function OrdersAdmin(){
               <span className={"status-pill status-" + o.status}>{o.status.replace("_"," ")}</span>
             </div>
             <div style={{fontSize:13, color:"#6b6558", margin:"6px 0"}}>
-              {o.phone} \u00B7 {o.address}
+              {o.phone} · {o.address}
             </div>
             <div style={{fontSize:13, margin:"8px 0"}}>
               {o.items.map((it, i) => (
-                <div key={i}>{it.qty} \u00D7 {it.name} \u2014 {money(it.price * it.qty)}</div>
+                <div key={i}>{it.qty} × {it.name} — {money(it.price * it.qty)}</div>
               ))}
             </div>
             <div style={{fontSize:13, color:"#6b6558"}}>
-              Paid via <strong style={{textTransform:"capitalize"}}>{o.payment_method}</strong> \u00B7 Txn ID: <strong>{o.txn_id || "\u2014"}</strong>
+              Paid via <strong style={{textTransform:"capitalize"}}>{o.payment_method}</strong> · Txn ID: <strong>{o.txn_id || "—"}</strong>
             </div>
             <div style={{fontWeight:600, margin:"8px 0"}}>
               Total: {money(o.total)}
               {o.cashout_charge > 0 && (
                 <span style={{fontWeight:400, fontSize:13, color:"#6b6558"}}>
-                  {" "}\u00B7 + {money(o.cashout_charge)} cash-out \u2192 expect {money(Number(o.total) + Number(o.cashout_charge))} received
+                  {" "}· + {money(o.cashout_charge)} cash-out → expect {money(Number(o.total) + Number(o.cashout_charge))} received
                 </span>
               )}
             </div>
@@ -1044,7 +1050,7 @@ function Invoice({ order, onClose }){
         <div className="inv-label">Items</div>
         {order.items.map((it, i) => (
           <div className="inv-row" key={i}>
-            <span>{it.qty} \u00D7 {it.name}</span>
+            <span>{it.qty} × {it.name}</span>
             <span>{money(it.price * it.qty)}</span>
           </div>
         ))}
@@ -1063,12 +1069,12 @@ function Invoice({ order, onClose }){
 
         <div className="inv-label">Payment</div>
         <div style={{fontSize:12.5, color:"#6b6558"}}>
-          bKash \u00B7 Transaction ID: <strong style={{color:"#20201C"}}>{order.txn_id || "\u2014"}</strong>
-          {" \u00B7 "}Status: <strong style={{color:"#20201C", textTransform:"capitalize"}}>{order.status.replace("_"," ")}</strong>
+          bKash · Transaction ID: <strong style={{color:"#20201C"}}>{order.txn_id || "—"}</strong>
+          {" · "}Status: <strong style={{color:"#20201C", textTransform:"capitalize"}}>{order.status.replace("_"," ")}</strong>
         </div>
 
         <div style={{marginTop:26, paddingTop:14, borderTop:"1px solid #E4DCCB", fontSize:11.5, color:"#a39c8a", textAlign:"center"}}>
-          Thank you for living in your own aura. \u00B7 livra-psi.vercel.app
+          Thank you for living in your own aura. · livra-psi.vercel.app
         </div>
       </div>
       <div className="inv-actions">
@@ -1088,7 +1094,7 @@ function AdminGate(){
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  if(session === undefined) return <div className="admin-wrap">Loading\u2026</div>;
+  if(session === undefined) return <div className="admin-wrap">Loading…</div>;
   if(!session) return <AdminLogin />;
   return <AdminDashboard />;
 }
