@@ -971,6 +971,39 @@ function ProductsAdmin(){
 
 function ProductForm({ product, uploading, onUpload, onCancel, onSave }){
   const [p, setP] = useState(product);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiMsg, setAiMsg] = useState("");
+
+  async function autoFill(){
+    if(p.images.length === 0){
+      setAiMsg("Add at least one photo first — include the spec sheet for best results.");
+      return;
+    }
+    setAiBusy(true);
+    setAiMsg("");
+    try {
+      const { data, error } = await sb.functions.invoke("listing-ai", { body: { images: p.images } });
+      if(error || !data || !data.listing){
+        const msg = (data && data.message) ? data.message : "AI could not read the photos. You can fill the details manually.";
+        setAiMsg(msg);
+      } else {
+        const d = data.listing;
+        setP(prev => ({
+          ...prev,
+          name: d.name || prev.name,
+          description: d.description || prev.description,
+          price: (d.price !== null && d.price !== undefined) ? String(d.price) : prev.price,
+          category: TYPES.indexOf(d.category) !== -1 ? d.category : prev.category,
+          room: ROOMS.indexOf(d.room) !== -1 ? d.room : prev.room,
+          specifications: d.specifications || prev.specifications,
+        }));
+        setAiMsg("Done — review everything below, adjust anything, then Save.");
+      }
+    } catch(err) {
+      setAiMsg("AI is not available right now. You can fill the details manually.");
+    }
+    setAiBusy(false);
+  }
 
   async function handleFiles(e){
     const files = Array.from(e.target.files || []);
@@ -997,7 +1030,38 @@ function ProductForm({ product, uploading, onUpload, onCancel, onSave }){
 
   return (
     <div style={{border:"1px solid var(--line)", padding:20, marginBottom:24, background:"white"}}>
-      <label>Product name</label>
+      <label>Photos ({p.images.length}/{MAX_PHOTOS})</label>
+      {p.images.length > 0 && (
+        <div className="photo-strip">
+          {p.images.map((u, i) => (
+            <div className="photo-slot" key={i}>
+              <img src={u} alt="" />
+              <button className="rm" onClick={() => removePhoto(i)}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+      {p.images.length < MAX_PHOTOS ? (
+        <React.Fragment>
+          <input type="file" accept="image/*" multiple onChange={handleFiles} />
+          <p className="hint">First photo is the cover. Include your dimension/spec sheet as one photo for best AI results.</p>
+        </React.Fragment>
+      ) : (
+        <p className="hint">Maximum {MAX_PHOTOS} photos reached — tap the red × on a photo to remove it, then you can add a new one.</p>
+      )}
+      {uploading && <p style={{fontSize:13}}>Uploading…</p>}
+
+      <button
+        className="btn"
+        style={{marginBottom:6, background:"#A8823A"}}
+        disabled={aiBusy || uploading || p.images.length === 0}
+        onClick={autoFill}
+      >
+        {aiBusy ? "Reading your photos…" : "✨ Auto-fill details from photos"}
+      </button>
+      {aiMsg && <p className="hint" style={{color:"#8E3527"}}>{aiMsg}</p>}
+
+      <label style={{marginTop:14}}>Product name</label>
       <input value={p.name} onChange={e => setP({...p, name: e.target.value})} />
 
       <div className="form-grid">
@@ -1028,27 +1092,6 @@ function ProductForm({ product, uploading, onUpload, onCancel, onSave }){
           <input type="number" value={p.stock} onChange={e => setP({...p, stock: e.target.value})} />
         </div>
       </div>
-
-      <label>Photos ({p.images.length}/{MAX_PHOTOS})</label>
-      {p.images.length > 0 && (
-        <div className="photo-strip">
-          {p.images.map((u, i) => (
-            <div className="photo-slot" key={i}>
-              <img src={u} alt="" />
-              <button className="rm" onClick={() => removePhoto(i)}>×</button>
-            </div>
-          ))}
-        </div>
-      )}
-      {p.images.length < MAX_PHOTOS ? (
-        <React.Fragment>
-          <input type="file" accept="image/*" multiple onChange={handleFiles} />
-          <p className="hint">First photo is the cover. You can select several at once.</p>
-        </React.Fragment>
-      ) : (
-        <p className="hint">Maximum {MAX_PHOTOS} photos reached — tap the red × on a photo to remove it, then you can add a new one.</p>
-      )}
-      {uploading && <p style={{fontSize:13}}>Uploading…</p>}
 
       <label>Specifications</label>
       <textarea
