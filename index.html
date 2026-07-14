@@ -531,9 +531,13 @@ function ProductDetail({ product, onClose, onAdd }){
         <p style={{fontSize:12, color:"#8a8474", margin:"0 0 10px"}}>
           {product.stock > 0 ? product.stock + " in stock" : "Out of stock"}
         </p>
-        <button className="btn" disabled={product.stock <= 0} onClick={() => onAdd(product)}>
-          {product.stock <= 0 ? "Sold out" : "Add to bag"}
-        </button>
+        {onAdd ? (
+          <button className="btn" disabled={product.stock <= 0} onClick={() => onAdd(product)}>
+            {product.stock <= 0 ? "Sold out" : "Add to bag"}
+          </button>
+        ) : (
+          <p className="hint" style={{textAlign:"center"}}>Preview — this is exactly what customers see.</p>
+        )}
       </div>
     </React.Fragment>
   );
@@ -704,6 +708,7 @@ function ProductsAdmin(){
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
+  const [viewing, setViewing] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
 
@@ -828,6 +833,7 @@ function ProductsAdmin(){
               </React.Fragment>
             ) : (
               <React.Fragment>
+                <button className="btn" style={{width:"auto"}} onClick={() => setViewing(p)}>View</button>
                 <button className="btn outline" style={{width:"auto"}} onClick={() => setEditing(toFormProduct(p))}>Edit</button>
                 <button className="btn outline" style={{width:"auto"}} onClick={() => toggleActive(p)}>{p.active ? "Hide" : "Unhide"}</button>
                 <button className="btn danger" style={{width:"auto"}} onClick={() => moveToTrash(p.id)}>Trash</button>
@@ -836,6 +842,7 @@ function ProductsAdmin(){
           </div>
         ))
       )}
+      {viewing && <ProductDetail product={viewing} onClose={() => setViewing(null)} onAdd={null} />}
     </div>
   );
 }
