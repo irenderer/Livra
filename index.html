@@ -602,6 +602,12 @@ function ProductDetail({ product, onClose, onAdd }){
 
 /* ============ CHECKOUT ============ */
 
+function makeOrderCode(){
+  const t = Date.now().toString(36).slice(-4).toUpperCase();
+  const r = Math.random().toString(36).slice(2, 4).toUpperCase();
+  return "LV-" + t + r;
+}
+
 function Checkout({ cart, total, onClose, onSuccess }){
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -609,6 +615,7 @@ function Checkout({ cart, total, onClose, onSuccess }){
   const [txnId, setTxnId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [confirmed, setConfirmed] = useState(null); // order code after success
 
   const cashoutCharge = Math.ceil(total * CASHOUT_RATE);
   const amountToSend = total + cashoutCharge;
@@ -624,6 +631,7 @@ function Checkout({ cart, total, onClose, onSuccess }){
       return;
     }
     setSubmitting(true);
+    const code = makeOrderCode();
     const { error: insertError } = await sb.from("orders").insert({
       customer_name: name,
       phone,
@@ -633,6 +641,7 @@ function Checkout({ cart, total, onClose, onSuccess }){
       cashout_charge: cashoutCharge,
       payment_method: "bkash",
       txn_id: txnId,
+      order_code: code,
       status: "pending_verification",
     });
     setSubmitting(false);
@@ -640,7 +649,31 @@ function Checkout({ cart, total, onClose, onSuccess }){
       setError("Something went wrong submitting your order. Please try again.");
       return;
     }
-    onSuccess();
+    setConfirmed(code);
+  }
+
+  if(confirmed){
+    return (
+      <React.Fragment>
+        <div className="overlay" />
+        <div className="drawer">
+          <div style={{textAlign:"center", paddingTop:30}}>
+            <div style={{fontSize:44, lineHeight:1}}>✓</div>
+            <h2 style={{marginTop:14}}>Order received</h2>
+            <p style={{fontSize:12, letterSpacing:2, color:"#a39c8a", margin:"22px 0 4px"}}>YOUR ORDER ID</p>
+            <div style={{fontFamily:"'Cormorant Garamond',serif", fontSize:38, letterSpacing:3, fontWeight:600}}>{confirmed}</div>
+            <div style={{border:"1px solid var(--brass)", background:"#fbf6ec", padding:"14px 16px", margin:"22px 0", fontSize:13.5, lineHeight:1.65, textAlign:"left"}}>
+              <strong>Please take a screenshot of this screen.</strong><br/>
+              We are verifying your bKash payment now. Once it's confirmed, we'll message you on <strong>{phone}</strong> with your delivery details. Delivery within 7 days of confirmation.
+            </div>
+            <p style={{fontSize:12.5, color:"#8a8474", margin:"0 0 20px"}}>
+              Amount sent: {money(total + cashoutCharge)} · bKash Txn: {txnId}
+            </p>
+            <button className="btn" onClick={() => { onSuccess(); }}>Done</button>
+          </div>
+        </div>
+      </React.Fragment>
+    );
   }
 
   return (
@@ -1075,7 +1108,7 @@ function OrdersAdmin(){
         filtered.map(o => (
           <div key={o.id} style={{border:"1px solid var(--line)", background:"white", padding:16, marginBottom:14}}>
             <div style={{display:"flex", justifyContent:"space-between"}}>
-              <strong>{o.customer_name}</strong>
+              <strong>{(o.order_code ? o.order_code + " · " : "") + o.customer_name}</strong>
               <span className={"status-pill status-" + o.status}>{o.status.replace("_"," ")}</span>
             </div>
             <div style={{fontSize:13, color:"#6b6558", margin:"6px 0"}}>
@@ -1123,7 +1156,7 @@ function OrdersAdmin(){
 function Invoice({ order, onClose }){
   const d = new Date(order.created_at);
   const dateStr = d.getDate() + "/" + (d.getMonth() + 1) + "/" + d.getFullYear();
-  const invNo = "LV-" + String(order.id).replace(/-/g, "").slice(0, 8).toUpperCase();
+  const invNo = order.order_code || ("LV-" + String(order.id).replace(/-/g, "").slice(0, 8).toUpperCase());
   const grand = Number(order.total) + Number(order.cashout_charge || 0);
 
   return (
