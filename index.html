@@ -115,12 +115,43 @@
   .drawer h2{ font-size:26px; margin-top:0; }
   .close-x{ background:none; border:none; font-size:24px; float:right; line-height:1; }
 
-  .gallery-main{ width:100%; aspect-ratio:1; object-fit:cover; background:#eee; display:block; border:1px solid var(--line); }
+  .gallery-main{ width:100%; aspect-ratio:1; object-fit:cover; background:#eee; display:block; border:1px solid var(--line); cursor:zoom-in; }
   .gallery-thumbs{ display:flex; gap:8px; margin-top:8px; }
   .gallery-thumbs img{
     width:64px; height:64px; object-fit:cover; border:2px solid transparent; cursor:pointer; background:#eee;
   }
   .gallery-thumbs img.sel{ border-color:var(--brass); }
+  .tap-hint{ font-size:11px; color:#a39c8a; text-align:center; margin:6px 0 0; }
+
+  /* image protection: no long-press save, no drag, no selection */
+  .card-img, .gallery-main, .gallery-thumbs img, .lightbox img{
+    -webkit-touch-callout:none; -webkit-user-select:none; user-select:none;
+  }
+
+  .lightbox{
+    position:fixed; inset:0; z-index:80; background:rgba(29,28,26,0.9);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .lightbox img{
+    max-width:94vw; max-height:80vh; object-fit:contain; display:block;
+    box-shadow:0 20px 60px rgba(0,0,0,0.4);
+  }
+  .lb-stage{ position:relative; }
+  .lb-stage::after{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='230' height='150'><text x='12' y='84' font-family='Georgia, serif' font-size='26' letter-spacing='8' fill='rgba(247,243,236,0.13)' transform='rotate(-18 115 75)'>LIVRA</text></svg>");
+    background-repeat:repeat;
+  }
+  .lb-close{
+    position:fixed; top:16px; right:18px; background:none; border:none; color:#F7F3EC; font-size:34px; line-height:1; z-index:81;
+  }
+  .lb-nav{
+    position:fixed; top:50%; transform:translateY(-50%); background:rgba(247,243,236,0.12);
+    border:none; color:#F7F3EC; font-size:26px; width:44px; height:64px; z-index:81;
+  }
+  .lb-prev{ left:6px; }
+  .lb-next{ right:6px; }
+  .lb-count{ position:fixed; bottom:18px; left:50%; transform:translateX(-50%); color:rgba(247,243,236,0.7); font-size:12px; letter-spacing:1px; z-index:81; }
 
   .detail-cat{ font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:#a39c8a; margin:18px 0 2px; }
   .detail-name{ font-size:30px; font-family:'Cormorant Garamond', serif; margin:0 0 4px; }
@@ -409,7 +440,7 @@ function Storefront(){
         <div className="grid">
           {visible.map(p => (
             <div className="card" key={p.id} onClick={() => setDetail(p)}>
-              <img className="card-img" src={firstImage(p)} alt={p.name} />
+              <img className="card-img" src={firstImage(p)} alt={p.name} draggable={false} onContextMenu={(e) => e.preventDefault()} />
               <div className="card-body">
                 <p className="card-cat">{(p.room && p.room !== "Any Room" ? p.room + " · " : "") + (p.category || "Other")}</p>
                 <h3 className="card-name">{p.name}</h3>
@@ -492,7 +523,9 @@ function Storefront(){
 function ProductDetail({ product, onClose, onAdd }){
   const imgs = allImages(product);
   const [idx, setIdx] = useState(0);
+  const [zoom, setZoom] = useState(false);
   const specs = parseSpecs(product.specifications);
+  const noSave = (e) => e.preventDefault();
 
   return (
     <React.Fragment>
@@ -501,11 +534,19 @@ function ProductDetail({ product, onClose, onAdd }){
         <button className="close-x" onClick={onClose}>×</button>
         <div style={{clear:"both"}} />
 
-        <img className="gallery-main" src={imgs[idx]} alt={product.name} />
+        <img
+          className="gallery-main"
+          src={imgs[idx]}
+          alt={product.name}
+          draggable={false}
+          onContextMenu={noSave}
+          onClick={() => setZoom(true)}
+        />
+        <p className="tap-hint">Tap photo to enlarge</p>
         {imgs.length > 1 && (
           <div className="gallery-thumbs">
             {imgs.map((u, i) => (
-              <img key={i} src={u} className={i === idx ? "sel" : ""} onClick={() => setIdx(i)} alt="" />
+              <img key={i} src={u} className={i === idx ? "sel" : ""} draggable={false} onContextMenu={noSave} onClick={() => setIdx(i)} alt="" />
             ))}
           </div>
         )}
@@ -539,6 +580,22 @@ function ProductDetail({ product, onClose, onAdd }){
           <p className="hint" style={{textAlign:"center"}}>Preview — this is exactly what customers see.</p>
         )}
       </div>
+
+      {zoom && (
+        <div className="lightbox" onClick={(e) => { if(e.target === e.currentTarget) setZoom(false); }}>
+          <button className="lb-close" onClick={() => setZoom(false)}>×</button>
+          {imgs.length > 1 && (
+            <button className="lb-nav lb-prev" onClick={() => setIdx((idx - 1 + imgs.length) % imgs.length)}>‹</button>
+          )}
+          <div className="lb-stage">
+            <img src={imgs[idx]} alt={product.name} draggable={false} onContextMenu={noSave} />
+          </div>
+          {imgs.length > 1 && (
+            <button className="lb-nav lb-next" onClick={() => setIdx((idx + 1) % imgs.length)}>›</button>
+          )}
+          <div className="lb-count">{(idx + 1) + " / " + imgs.length}</div>
+        </div>
+      )}
     </React.Fragment>
   );
 }
@@ -725,20 +782,52 @@ function ProductsAdmin(){
   const trash = products.filter(p => p.deleted_at);
   const shown = showTrash ? trash : live;
 
+  const STD_SIZE = 1200;
+
+  function standardizeImage(file){
+    return new Promise(function(resolve, reject){
+      const url = URL.createObjectURL(file);
+      const im = new Image();
+      im.onload = function(){
+        try {
+          const canvas = document.createElement("canvas");
+          canvas.width = STD_SIZE;
+          canvas.height = STD_SIZE;
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#F7F3EC";
+          ctx.fillRect(0, 0, STD_SIZE, STD_SIZE);
+          const scale = Math.min(STD_SIZE / im.width, STD_SIZE / im.height);
+          const w = im.width * scale;
+          const h = im.height * scale;
+          ctx.drawImage(im, (STD_SIZE - w) / 2, (STD_SIZE - h) / 2, w, h);
+          canvas.toBlob(function(blob){
+            URL.revokeObjectURL(url);
+            if(blob) resolve(blob); else reject(new Error("processing failed"));
+          }, "image/jpeg", 0.85);
+        } catch(err){ URL.revokeObjectURL(url); reject(err); }
+      };
+      im.onerror = function(){ URL.revokeObjectURL(url); reject(new Error("could not read image")); };
+      im.src = url;
+    });
+  }
+
   async function uploadPhotos(files){
     setUploading(true);
     const urls = [];
     for(let i = 0; i < files.length; i++){
-      const file = files[i];
-      const ext = file.name.split(".").pop();
-      const path = Date.now() + "-" + Math.random().toString(36).slice(2) + "." + ext;
-      const { error } = await sb.storage.from("product-images").upload(path, file);
-      if(error){
-        alert("One photo failed to upload: " + error.message);
-        continue;
+      try {
+        const blob = await standardizeImage(files[i]);
+        const path = Date.now() + "-" + Math.random().toString(36).slice(2) + ".jpg";
+        const { error } = await sb.storage.from("product-images").upload(path, blob, { contentType: "image/jpeg" });
+        if(error){
+          alert("One photo failed to upload: " + error.message);
+          continue;
+        }
+        const { data } = sb.storage.from("product-images").getPublicUrl(path);
+        urls.push(data.publicUrl);
+      } catch(err){
+        alert("One photo could not be processed: " + err.message);
       }
-      const { data } = sb.storage.from("product-images").getPublicUrl(path);
-      urls.push(data.publicUrl);
     }
     setUploading(false);
     return urls;
