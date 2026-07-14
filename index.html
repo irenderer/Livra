@@ -817,50 +817,144 @@ function ProductsAdmin(){
 
   const STD_SIZE = 1200;
 
-  function standardizeImage(file){
+  function loadImage(file){
     return new Promise(function(resolve, reject){
       const url = URL.createObjectURL(file);
       const im = new Image();
-      im.onload = function(){
-        try {
-          const canvas = document.createElement("canvas");
-          canvas.width = STD_SIZE;
-          canvas.height = STD_SIZE;
-          const ctx = canvas.getContext("2d");
-          ctx.fillStyle = "#F7F3EC";
-          ctx.fillRect(0, 0, STD_SIZE, STD_SIZE);
-          const scale = Math.min(STD_SIZE / im.width, STD_SIZE / im.height);
-          const w = im.width * scale;
-          const h = im.height * scale;
-          ctx.drawImage(im, (STD_SIZE - w) / 2, (STD_SIZE - h) / 2, w, h);
-          canvas.toBlob(function(blob){
-            URL.revokeObjectURL(url);
-            if(blob) resolve(blob); else reject(new Error("processing failed"));
-          }, "image/jpeg", 0.85);
-        } catch(err){ URL.revokeObjectURL(url); reject(err); }
-      };
+      im.onload = function(){ resolve({ im: im, url: url }); };
       im.onerror = function(){ URL.revokeObjectURL(url); reject(new Error("could not read image")); };
       im.src = url;
     });
   }
 
-  async function uploadPhotos(files){
+  // detect white gutter lines and split a collage into separate panels
+  function detectPanels(im){
+    const maxDim = 900;
+    const scale = Math.min(1, maxDim / Math.max(im.width, im.height));
+    const w = Math.max(1, Math.round(im.width * scale));
+    const h = Math.max(1, Math.round(im.height * scale));
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    const ctx = c.getContext("2d");
+    ctx.drawImage(im, 0, 0, w, h);
+    const px = ctx.getImageData(0, 0, w, h).data;
+
+    function isWhite(x, y){
+      const i = (y * w + x) * 4;
+      return px[i] > 246 && px[i+1] > 246 && px[i+2] > 246;
+    }
+    function whiteCol(x, y0, y1){
+      let white = 0, n = 0;
+      for(let y = y0; y < y1; y += 2){ n++; if(isWhite(x, y)) white++; }
+      return n > 0 && white / n > 0.97;
+    }
+    function whiteRow(y, x0, x1){
+      let white = 0, n = 0;
+      for(let x = x0; x < x1; x += 2){ n++; if(isWhite(x, y)) white++; }
+      return n > 0 && white / n > 0.97;
+    }
+    function hasContent(r){
+      let nonwhite = 0, n = 0;
+      for(let y = r.y; y < r.y + r.h; y += 4){
+        for(let x = r.x; x < r.x + r.w; x += 4){ n++; if(!isWhite(x, y)) nonwhite++; }
+      }
+      return n > 0 && nonwhite / n > 0.03;
+    }
+    function splitRegion(r, depth){
+      if(depth > 2) return [r];
+      const minPanel = Math.min(w, h) * 0.14;
+      // find vertical gutters spanning this region
+      let cuts = [];
+      let run = 0;
+      for(let x = r.x + 1; x < r.x + r.w - 1; x++){
+        if(whiteCol(x, r.y, r.y + r.h)) run++;
+        else {
+          if(run >= 4) cuts.push(x - Math.floor(run / 2));
+          run = 0;
+        }
+      }
+      let axis = "v";
+      if(cuts.length === 0){
+        run = 0;
+        for(let y = r.y + 1; y < r.y + r.h - 1; y++){
+          if(whiteRow(y, r.x, r.x + r.w)) run++;
+          else {
+            if(run >= 4) cuts.push(y - Math.floor(run / 2));
+            run = 0;
+          }
+        }
+        axis = "h";
+      }
+      if(cuts.length === 0 || cuts.length > 5) return [r];
+      const parts = [];
+      let start = axis === "v" ? r.x : r.y;
+      const ends = cuts.concat([axis === "v" ? r.x + r.w : r.y + r.h]);
+      for(let k = 0; k < ends.length; k++){
+        const size = ends[k] - start;
+        if(size >= minPanel){
+          parts.push(axis === "v"
+            ? { x: start, y: r.y, w: size, h: r.h }
+            : { x: r.x, y: start, w: r.w, h: size });
+        }
+        start = ends[k];
+      }
+      if(parts.length <= 1) return [r];
+      let out = [];
+      for(let k = 0; k < parts.length; k++){
+        out = out.concat(splitRegion(parts[k], depth + 1));
+      }
+      return out;
+    }
+
+    const regions = splitRegion({ x: 0, y: 0, w: w, h: h }, 0).filter(hasContent);
+    // map back to original image coordinates
+    return regions.map(function(r){
+      return { x: r.x / scale, y: r.y / scale, w: r.w / scale, h: r.h / scale };
+    });
+  }
+
+  function standardizeRegion(im, r){
+    return new Promise(function(resolve, reject){
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = STD_SIZE;
+        canvas.height = STD_SIZE;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#F7F3EC";
+        ctx.fillRect(0, 0, STD_SIZE, STD_SIZE);
+        const scale = Math.min(STD_SIZE / r.w, STD_SIZE / r.h);
+        const w = r.w * scale;
+        const h = r.h * scale;
+        ctx.drawImage(im, r.x, r.y, r.w, r.h, (STD_SIZE - w) / 2, (STD_SIZE - h) / 2, w, h);
+        canvas.toBlob(function(blob){
+          if(blob) resolve(blob); else reject(new Error("processing failed"));
+        }, "image/jpeg", 0.85);
+      } catch(err){ reject(err); }
+    });
+  }
+
+  async function uploadPhotos(files, roomLeft){
     setUploading(true);
     const urls = [];
     for(let i = 0; i < files.length; i++){
       try {
-        const blob = await standardizeImage(files[i]);
-        const path = Date.now() + "-" + Math.random().toString(36).slice(2) + ".jpg";
-        const { error } = await sb.storage.from("product-images").upload(path, blob, { contentType: "image/jpeg" });
-        if(error){
-          alert("One photo failed to upload: " + error.message);
-          continue;
+        const { im, url } = await loadImage(files[i]);
+        let regions = detectPanels(im);
+        if(regions.length < 1) regions = [{ x: 0, y: 0, w: im.width, h: im.height }];
+        for(let k = 0; k < regions.length; k++){
+          if(urls.length >= roomLeft) break;
+          const blob = await standardizeRegion(im, regions[k]);
+          const path = Date.now() + "-" + Math.random().toString(36).slice(2) + ".jpg";
+          const { error } = await sb.storage.from("product-images").upload(path, blob, { contentType: "image/jpeg" });
+          if(error){ alert("One photo failed to upload: " + error.message); continue; }
+          const { data } = sb.storage.from("product-images").getPublicUrl(path);
+          urls.push(data.publicUrl);
         }
-        const { data } = sb.storage.from("product-images").getPublicUrl(path);
-        urls.push(data.publicUrl);
+        URL.revokeObjectURL(url);
       } catch(err){
         alert("One photo could not be processed: " + err.message);
       }
+      if(urls.length >= roomLeft) break;
     }
     setUploading(false);
     return urls;
@@ -1008,18 +1102,14 @@ function ProductForm({ product, uploading, onUpload, onCancel, onSave }){
   async function handleFiles(e){
     const files = Array.from(e.target.files || []);
     if(files.length === 0) return;
-    const room = MAX_PHOTOS - p.images.length;
-    if(room <= 0){
+    const roomLeft = MAX_PHOTOS - p.images.length;
+    if(roomLeft <= 0){
       alert("Maximum " + MAX_PHOTOS + " photos. Remove one first.");
       return;
     }
-    const chosen = files.slice(0, room);
-    if(files.length > room){
-      alert("Only " + room + " more photo" + (room > 1 ? "s" : "") + " can be added (max " + MAX_PHOTOS + ").");
-    }
-    const urls = await onUpload(chosen);
+    const urls = await onUpload(files, roomLeft);
     if(urls.length > 0){
-      setP(prev => ({ ...prev, images: prev.images.concat(urls) }));
+      setP(prev => ({ ...prev, images: prev.images.concat(urls).slice(0, MAX_PHOTOS) }));
     }
     e.target.value = "";
   }
@@ -1044,7 +1134,7 @@ function ProductForm({ product, uploading, onUpload, onCancel, onSave }){
       {p.images.length < MAX_PHOTOS ? (
         <React.Fragment>
           <input type="file" accept="image/*" multiple onChange={handleFiles} />
-          <p className="hint">First photo is the cover. Include your dimension/spec sheet as one photo for best AI results.</p>
+          <p className="hint">First photo is the cover. Collages split into separate photos automatically. Include your spec sheet for best AI results.</p>
         </React.Fragment>
       ) : (
         <p className="hint">Maximum {MAX_PHOTOS} photos reached — tap the red × on a photo to remove it, then you can add a new one.</p>
